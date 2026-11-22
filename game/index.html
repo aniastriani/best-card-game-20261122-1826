@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ember Court — Duel of the Four Houses</title>
+<style>
+  :root {
+    --felt: #123524;
+    --felt-dark: #0b2117;
+    --gold: #d4af37;
+    --gold-dim: #9a7b24;
+    --cream: #f7f0dd;
+    --ink: #1c1a16;
+    --red: #c0392b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: radial-gradient(ellipse at 50% 30%, #1d5c3a 0%, var(--felt) 55%, var(--felt-dark) 100%);
+    color: var(--cream);
+    overflow: hidden;
+  }
+  #app { height: 100vh; display: flex; flex-direction: column; padding: 10px 18px 12px; }
+
+  /* header */
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; border-bottom: 1px solid rgba(212,175,55,.45); }
+  .brand { font-size: 22px; letter-spacing: 6px; color: var(--gold); font-weight: bold; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
+  .turn-badge { font-size: 15px; letter-spacing: 1px; color: #e8d9a0; font-style: italic; }
+  .top-btns { display: flex; gap: 8px; }
+  .mini-btn { font-family: inherit; background: rgba(0,0,0,.35); color: var(--cream); border: 1px solid var(--gold-dim); border-radius: 6px; padding: 5px 12px; font-size: 13px; cursor: pointer; }
+  .mini-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* side rows */
+  .side-row { display: flex; align-items: center; gap: 16px; padding: 8px 4px; }
+  .side-row.opponent { border-bottom: 1px solid rgba(255,255,255,.08); }
+  .side-row.player { border-top: 1px solid rgba(255,255,255,.08); }
+  .avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: bold; background: linear-gradient(145deg, #5d4037, #3e2723); border: 2px solid var(--gold); flex: none; }
+  .avatar.you { background: linear-gradient(145deg, #1b5e20, #0d3311); }
+  .side-info { flex: 1; min-width: 0; }
+  .life-wrap { display: flex; align-items: center; gap: 10px; }
+  .side-name { font-size: 14px; letter-spacing: 2px; font-weight: bold; width: 130px; flex: none; }
+  .life-bar { flex: 1; height: 20px; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.25); border-radius: 10px; overflow: hidden; }
+  .life-fill { height: 100%; background: linear-gradient(90deg, #e74c3c, #f1948a); transition: width .3s; }
+  .life-num { font-size: 16px; font-weight: bold; min-width: 64px; text-align: right; }
+  .block-badge { background: #2471a3; border-radius: 10px; padding: 2px 9px; font-size: 13px; font-weight: bold; }
+  .gems { display: flex; gap: 5px; margin-top: 6px; margin-left: 140px; }
+  .gem { width: 13px; height: 13px; transform: rotate(45deg); background: #233; border: 1px solid #4a6b7a; }
+  .gem.on { background: #29b6f6; box-shadow: 0 0 7px #29b6f6; border-color: #b3e5fc; }
+  .gem.locked { opacity: .25; }
+  .opp-hand { display: flex; }
+  .opp-hand .card-back { margin-left: -14px; }
+  .opp-hand .card-back:first-child { margin-left: 0; }
+  .hand-count { font-size: 12px; color: #c9d6c5; font-style: italic; width: 150px; text-align: right; }
+
+  /* middle */
+  .mid-row { flex: 1; display: flex; gap: 16px; padding: 10px 4px; min-height: 0; }
+  .play-area { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .last-play { text-align: center; background: rgba(0,0,0,.35); border: 1px solid rgba(212,175,55,.5); border-radius: 10px; padding: 12px 22px; max-width: 560px; }
+  .last-play.idle { border-style: dashed; color: #c9d6c5; font-style: italic; }
+  .last-play-who { font-size: 12px; letter-spacing: 3px; color: var(--gold); margin-bottom: 4px; }
+  .last-play-text { font-size: 17px; }
+  .hint { font-size: 12.5px; color: #b7c4b2; font-style: italic; }
+  .log { width: 300px; flex: none; background: rgba(0,0,0,.4); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; padding: 10px 12px; overflow-y: auto; font-size: 13px; line-height: 1.5; }
+  .log-title { font-size: 11px; letter-spacing: 3px; color: var(--gold); margin-bottom: 6px; }
+  .log-line { color: #dfe8d9; border-bottom: 1px solid rgba(255,255,255,.05); padding: 2px 0; }
+
+  .end-turn { flex: none; font-family: inherit; font-size: 17px; font-weight: bold; letter-spacing: 1px; color: var(--ink); background: linear-gradient(180deg, #f0cd6b, var(--gold)); border: none; border-radius: 10px; padding: 14px 26px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.5); }
+  .end-turn:hover:not(:disabled) { filter: brightness(1.1); }
+  .end-turn:disabled { opacity: .45; cursor: default; }
+
+  /* hand + cards */
+  .hand { display: flex; justify-content: center; align-items: flex-end; gap: 10px; padding: 6px 4px 2px; min-height: 178px; }
+  .hand-empty { color: #c9d6c5; font-style: italic; padding: 30px; }
+  .card {
+    --house: #888;
+    --house-light: #ddd;
+    width: 118px; height: 168px; flex: none; position: relative; text-align: left;
+    font-family: Georgia, serif; color: var(--ink); cursor: pointer;
+    background: linear-gradient(180deg, #fffdf5, #f3ead2);
+    border: 2px solid var(--house); border-radius: 10px; padding: 8px;
+    box-shadow: 0 5px 14px rgba(0,0,0,.55); transition: transform .12s, box-shadow .12s;
+  }
+  .card:hover:not(.dim) { transform: translateY(-14px); box-shadow: 0 12px 22px rgba(0,0,0,.6); }
+  .card.dim { opacity: .55; cursor: not-allowed; }
+  .card .cost {
+    position: absolute; top: -9px; left: -9px; width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #7fd4ff, #1a7fc1); color: #fff; font-weight: bold;
+    font-size: 17px; display: flex; align-items: center; justify-content: center;
+    border: 2px solid #eaf6ff; box-shadow: 0 2px 6px rgba(0,0,0,.5);
+  }
+  .card .house-tag { position: absolute; top: 7px; right: 8px; font-size: 10px; letter-spacing: 1.5px; color: var(--house); font-weight: bold; font-family: Verdana, sans-serif; }
+  .card .glyph {
+    width: 46px; height: 46px; margin: 10px auto 4px; border-radius: 50%;
+    background: var(--house-light); border: 2px solid var(--house); color: var(--house);
+    display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; font-style: italic;
+  }
+  .card .card-name { text-align: center; font-size: 14.5px; font-weight: bold; line-height: 1.15; min-height: 30px; }
+  .card .card-text { text-align: center; font-size: 11.5px; font-style: italic; color: #444; line-height: 1.3; min-height: 26px; }
+  .card .card-value { text-align: center; font-size: 17px; font-weight: bold; color: var(--house); margin-top: 2px; }
+  .card-back {
+    width: 44px; height: 62px; border-radius: 6px; flex: none;
+    background: repeating-linear-gradient(45deg, #6c3483, #6c3483 6px, #7d3c98 6px, #7d3c98 12px);
+    border: 2px solid var(--gold); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,.5);
+  }
+  .card-back .back-glyph { width: 26px; height: 26px; border-radius: 50%; background: var(--cream); color: #6c3483; display: flex; align-items: center; justify-content: center; font-weight: bold; font-style: italic; }
+
+  /* overlays */
+  .overlay { position: fixed; inset: 0; background: rgba(5, 18, 11, .82); display: flex; align-items: center; justify-content: center; z-index: 10; backdrop-filter: blur(2px); }
+  .panel { width: 620px; max-width: 92vw; background: linear-gradient(180deg, #fdf8e7, #f3ead2); color: var(--ink); border: 3px solid var(--gold); border-radius: 16px; padding: 28px 34px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,.7); }
+  .panel-title { font-size: 46px; letter-spacing: 6px; color: #7a5c00; margin-bottom: 6px; }
+  .title-screen .panel-title { font-size: 54px; }
+  .win-screen .panel-title { color: #1e8449; }
+  .loss-screen .panel-title { color: var(--red); }
+  .tagline { font-style: italic; font-size: 17px; margin-bottom: 16px; color: #444; }
+  .rules { text-align: left; font-size: 14.5px; line-height: 1.65; background: rgba(0,0,0,.05); border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; }
+  .big-btn { font-family: inherit; font-size: 19px; font-weight: bold; letter-spacing: 2px; color: #fff; background: linear-gradient(180deg, #2e7d32, #1b5e20); border: none; border-radius: 10px; padding: 14px 34px; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+  .big-btn:hover { filter: brightness(1.12); }
+  .fine { font-size: 12px; color: #777; margin-top: 14px; font-style: italic; }
+  .stats { text-align: left; width: 380px; margin: 0 auto 18px; }
+  .stat-row { display: flex; justify-content: space-between; padding: 5px 2px; border-bottom: 1px solid rgba(0,0,0,.12); font-size: 15px; }
+  .stat-val { font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
